@@ -192,7 +192,8 @@ bool MsckfVio::createRosIO() {
   mocap_odom_sub = nh.subscribe("mocap_odom", 10,
       &MsckfVio::mocapOdomCallback, this);
   mocap_odom_pub = nh.advertise<nav_msgs::Odometry>("gt_odom", 1);
-
+ //my code
+ pub_T_J_W_transform= nh.advertise<geometry_msgs::TransformStamped>("rovio/T_G_W", 1);
   return true;
 }
 
@@ -211,7 +212,8 @@ bool MsckfVio::initialize() {
     Matrix3d::Identity()*IMUState::acc_noise;
   state_server.continuous_noise_cov.block<3, 3>(9, 9) =
     Matrix3d::Identity()*IMUState::acc_bias_noise;
-
+ //my code
+	msgSeq_=1;
   // Initialize the chi squared test table with confidence
   // level 0.95.
   for (int i = 1; i < 100; ++i) {
@@ -1377,12 +1379,27 @@ void MsckfVio::publish(const ros::Time& time) {
   Eigen::Vector3d body_velocity =
     IMUState::T_imu_body.linear() * imu_state.velocity;
 
+
   // Publish tf
   if (publish_tf) {
     tf::Transform T_b_w_tf;
+
     tf::transformEigenToTF(T_b_w, T_b_w_tf);
-    tf_pub.sendTransform(tf::StampedTransform(
+	//geometry_msgs::TransformStamped T_b_w_tf_tarmy_geo; 
+    
+   tf_pub.sendTransform(tf::StampedTransform(
           T_b_w_tf, time, fixed_frame_id, child_frame_id));
+	//my code
+	//geometry_msgs::Transform T_b_w_tf_tarmy;
+	 geometry_msgs::TransformStamped T_b_w_tf_tarmy_geo;
+//	T_b_w_tf_tarmy_geo.header.frame_id="world";
+//	T_b_w_tf_tarmy_geo.child_frame_id="odom";
+ ///      tf::transformEigenToMsg(T_b_w, T_b_w_tf_tarmy_geo);
+       
+//	T_b_w_tf_tarmy_geo.header.seq = msgSeq_;
+//	T_b_w_tf_tarmy_geo.header.stamp=time;
+        tf::transformStampedTFToMsg(tf::StampedTransform(T_b_w_tf, time, fixed_frame_id, child_frame_id), T_b_w_tf_tarmy_geo);
+	pub_T_J_W_transform.publish(T_b_w_tf_tarmy_geo);   
   }
 
   // Publish the odometry

@@ -211,6 +211,9 @@ class MsckfVio {
     ros::Publisher feature_pub;
     tf::TransformBroadcaster tf_pub;
     ros::ServiceServer reset_srv;
+    //my code
+    ros::Publisher pub_T_J_W_transform;
+    int msgSeq_;
 
     // Frame id
     std::string fixed_frame_id;
