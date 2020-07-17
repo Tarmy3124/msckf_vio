@@ -61,7 +61,11 @@ or
 ```
 roslaunch msckf_vio msckf_vio_fla.launch
 ```
-
+or
+#我的添加
+```
+roslaunch msckf_vio msckf_vio_mynteye.launch
+```
 Once the nodes are running you need to run the dataset rosbags (in a different terminal), for example:
 
 ```
