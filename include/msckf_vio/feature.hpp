@@ -20,6 +20,8 @@
 #include "imu_state.h"
 #include "cam_state.h"
 
+#include "image_processor.h"
+
 namespace msckf_vio {
 
 /*
@@ -146,7 +148,11 @@ struct Feature {
 
   // 3d postion of the feature in the world frame.
   Eigen::Vector3d position;
-
+  //yolo: 2d postion of the person detected in the world frame.
+  //cv::Point2f person_position;
+  std::map<StateIDType, Eigen::Vector2d, std::less<StateIDType>,
+    Eigen::aligned_allocator<
+      std::pair<const StateIDType, Eigen::Vector2d> > > person_position;
   // A indicator to show if the 3d postion of the feature
   // has been initialized or not.
   bool is_initialized;

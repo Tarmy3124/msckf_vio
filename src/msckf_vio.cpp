@@ -773,11 +773,15 @@ void MsckfVio::addFeatureObservations(
       map_server[feature.id].observations[state_id] =
         Vector4d(feature.u0, feature.v0,
             feature.u1, feature.v1);
+      //yolo
+      map_server[feature.id].person_position[state_id]=Vector2d(feature.detect_u0,feature.detect_u0);
     } else {
       // This is an old feature.
       map_server[feature.id].observations[state_id] =
         Vector4d(feature.u0, feature.v0,
             feature.u1, feature.v1);
+      //yolo
+      map_server[feature.id].person_position[state_id]=Vector2d(feature.detect_u0,feature.detect_u0);
       ++tracked_feature_num;
     }
   }
@@ -1461,9 +1465,16 @@ void MsckfVio::publish(const ros::Time& time) {
   //tarmy
    // for(auto iter = feature.observations.begin(); iter != feature.observations.end(); iter++)  
    // std::cout<<"state id is"<<iter->first<<"observations are"<<iter->second<<std::endl;
+//yolo
+   StateIDType person_id = state_server.imu_state.id;
     if (feature.is_initialized) {
       Vector3d feature_position =
         IMUState::T_imu_body.linear() * feature.position;
+  //yolo aquire the responding person persition 
+    // std::cout<<"feature.person_position"<<state_server.imu_state.id<<std::endl;  
+    //  std::cout<<"feature.person_position"<<feature.person_position[person_id].<<",,,,,,,,,,,,,,,,,,,,"<<std::endl;
+ auto z = feature.person_position.find(person_id)->second;
+std::cout<<"feature.person_position"<<z<<std::endl;
       feature_msg_ptr->points.push_back(pcl::PointXYZ(
             feature_position(0), feature_position(1), feature_position(2)));
         this_pose_stamped.pose.position.x =feature_position(0); 
@@ -1476,7 +1487,7 @@ void MsckfVio::publish(const ros::Time& time) {
 
   feature_pub.publish(feature_msg_ptr);
   yolo_person_pub.publish(gui_path);
-
+    
   return;
 }
 

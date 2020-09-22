@@ -4,3 +4,5 @@ float64 u0 # horizontal coordinate in cam0
 float64 v0 # vertical coordinate in cam0
 float64 u1 # horizontal coordinate in cam0
 float64 v1 # vertical coordinate in cam0
+float64 detect_u0 #person detected x
+float64 detect_v0 #person detected y

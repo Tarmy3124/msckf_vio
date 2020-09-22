@@ -1269,6 +1269,9 @@ void ImageProcessor::publish() {
     feature_msg_ptr->features[i].v0 = curr_cam0_points_undistorted[i].y;
     feature_msg_ptr->features[i].u1 = curr_cam1_points_undistorted[i].x;
     feature_msg_ptr->features[i].v1 = curr_cam1_points_undistorted[i].y;
+    //yolo
+    feature_msg_ptr->features[i].detect_u0 = curr_cam0_points[i].x;
+    feature_msg_ptr->features[i].detect_v0 = curr_cam0_points[i].y;
   }
 
   feature_pub.publish(feature_msg_ptr);
