@@ -325,7 +325,8 @@ void ImageProcessor::initializeFirstFrame() {
   vector<cv::Point2f> cam0_points(new_features.size());
   for (int i = 0; i < new_features.size(); ++i)
     cam0_points[i] = new_features[i].pt;
-
+  //tarmy
+  //std::cout<<"cam0_points[i]"<<cam0_points[i]<<std::endl;  }
   vector<cv::Point2f> cam1_points(0);
   vector<unsigned char> inlier_markers(0);
   stereoMatch(cam0_points, cam1_points, inlier_markers);
@@ -1253,13 +1254,17 @@ void ImageProcessor::publish() {
   undistortPoints(
       curr_cam0_points, cam0_intrinsics, cam0_distortion_model,
       cam0_distortion_coeffs, curr_cam0_points_undistorted);
-  undistortPoints(
+  ////std::cout<<"cam0_intrinsics"<<cam0_intrinsics<<"\n"<<"cam0_distortion_model"<<cam0_distortion_model<<std::endl;
+//std::cout<<"curr_cam1_points_undistorted"<<curr_cam1_points_undistorted<<std::endl; 
+ undistortPoints(
       curr_cam1_points, cam1_intrinsics, cam1_distortion_model,
       cam1_distortion_coeffs, curr_cam1_points_undistorted);
 
   for (int i = 0; i < curr_ids.size(); ++i) {
     feature_msg_ptr->features.push_back(FeatureMeasurement());
     feature_msg_ptr->features[i].id = curr_ids[i];
+    //tarmy
+    //std::cout<<"feature.cam0_point"<<curr_cam0_points_undistorted[i]<<std::endl;
     feature_msg_ptr->features[i].u0 = curr_cam0_points_undistorted[i].x;
     feature_msg_ptr->features[i].v0 = curr_cam0_points_undistorted[i].y;
     feature_msg_ptr->features[i].u1 = curr_cam1_points_undistorted[i].x;

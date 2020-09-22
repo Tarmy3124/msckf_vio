@@ -22,6 +22,9 @@
 #include <tf/transform_broadcaster.h>
 #include <std_srvs/Trigger.h>
 
+//yolo
+#include <nav_msgs/Path.h>
+
 #include "imu_state.h"
 #include "cam_state.h"
 #include "feature.hpp"
@@ -209,6 +212,9 @@ class MsckfVio {
     ros::Subscriber feature_sub;
     ros::Publisher odom_pub;
     ros::Publisher feature_pub;
+    //yolo
+    //ros::Publisher yolo_point_pub;
+    ros::Publisher yolo_person_pub;
     tf::TransformBroadcaster tf_pub;
     ros::ServiceServer reset_srv;
     //my code

@@ -180,7 +180,8 @@ bool MsckfVio::createRosIO() {
   odom_pub = nh.advertise<nav_msgs::Odometry>("odom", 10);
   feature_pub = nh.advertise<sensor_msgs::PointCloud2>(
       "feature_point_cloud", 10);
-
+ //yolo
+  yolo_person_pub = nh.advertise<nav_msgs::Path>("personTrajectory",10, true);
   reset_srv = nh.advertiseService("reset",
       &MsckfVio::resetCallback, this);
 
@@ -1445,18 +1446,36 @@ void MsckfVio::publish(const ros::Time& time) {
       new pcl::PointCloud<pcl::PointXYZ>());
   feature_msg_ptr->header.frame_id = fixed_frame_id;
   feature_msg_ptr->height = 1;
+//yolo publish the person trajactory
+    nav_msgs::Path gui_path;
+    //nav_msgs::Path path;
+    gui_path.header.stamp=time;
+    gui_path.header.frame_id="world";
+    geometry_msgs::PoseStamped this_pose_stamped;
+    this_pose_stamped.header.stamp=time;
+    this_pose_stamped.header.frame_id="world";
+        
+
   for (const auto& item : map_server) {
     const auto& feature = item.second;
+  //tarmy
+   // for(auto iter = feature.observations.begin(); iter != feature.observations.end(); iter++)  
+   // std::cout<<"state id is"<<iter->first<<"observations are"<<iter->second<<std::endl;
     if (feature.is_initialized) {
       Vector3d feature_position =
         IMUState::T_imu_body.linear() * feature.position;
       feature_msg_ptr->points.push_back(pcl::PointXYZ(
             feature_position(0), feature_position(1), feature_position(2)));
+        this_pose_stamped.pose.position.x =feature_position(0); 
+        this_pose_stamped.pose.position.y = feature_position(1);
+        this_pose_stamped.pose.position.z = feature_position(2);
+        gui_path.poses.push_back(this_pose_stamped);
     }
   }
   feature_msg_ptr->width = feature_msg_ptr->points.size();
 
   feature_pub.publish(feature_msg_ptr);
+  yolo_person_pub.publish(gui_path);
 
   return;
 }
