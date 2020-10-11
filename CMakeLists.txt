@@ -20,6 +20,7 @@ find_package(catkin REQUIRED COMPONENTS
   nodelet
   image_transport
   cv_bridge
+  yolofast
   message_filters
   pcl_conversions
   pcl_ros
@@ -41,6 +42,7 @@ add_message_files(
   FeatureMeasurement.msg
   CameraMeasurement.msg
   TrackingInfo.msg
+#  DetsPersonPositon.msg
 )
 
 generate_messages(
@@ -83,6 +85,7 @@ add_library(msckf_vio
 add_dependencies(msckf_vio
   ${${PROJECT_NAME}_EXPORTED_TARGETS}
   ${catkin_EXPORTED_TARGETS}
+  yolofast
 )
 target_link_libraries(msckf_vio
   ${catkin_LIBRARIES}

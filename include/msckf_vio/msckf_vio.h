@@ -24,6 +24,7 @@
 
 //yolo
 #include <nav_msgs/Path.h>
+#include <yolofast/DetsPersonPositon.h>
 
 #include "imu_state.h"
 #include "cam_state.h"
@@ -105,7 +106,12 @@ class MsckfVio {
      * @param msg Stereo feature measurements.
      */
     void featureCallback(const CameraMeasurementConstPtr& msg);
-
+    /*
+     * @brief featureCallback
+     *    Callback function for dets from yolo
+     * @param msg Stereo feature measurements.
+     */
+  void detsCallback(const yolofast::DetsPersonPositonPtr& msg);
     /*
      * @brief publish Publish the results of VIO.
      * @param time The time stamp of output msgs.
@@ -171,6 +177,8 @@ class MsckfVio {
 
     // State vector
     StateServer state_server;
+    // detected rectangle to judge features pixels location of people
+    float det_rxL,det_rxR,det_rxT,det_rxB;
     // Maximum number of camera states
     int max_cam_state_size;
 
@@ -210,6 +218,10 @@ class MsckfVio {
     // Subscribers and publishers
     ros::Subscriber imu_sub;
     ros::Subscriber feature_sub;
+    // yolo define
+    nav_msgs::Path gui_path;    
+    geometry_msgs::PoseStamped this_pose_stamped;
+    ros::Subscriber dets_sub;
     ros::Publisher odom_pub;
     ros::Publisher feature_pub;
     //yolo

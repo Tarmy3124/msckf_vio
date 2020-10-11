@@ -189,7 +189,9 @@ bool MsckfVio::createRosIO() {
       &MsckfVio::imuCallback, this);
   feature_sub = nh.subscribe("features", 40,
       &MsckfVio::featureCallback, this);
-
+//yolo sub
+   dets_sub = nh.subscribe("/yoloDetsTx", 10,
+      &MsckfVio::detsCallback, this);
   mocap_odom_sub = nh.subscribe("mocap_odom", 10,
       &MsckfVio::mocapOdomCallback, this);
   mocap_odom_pub = nh.advertise<nav_msgs::Odometry>("gt_odom", 1);
@@ -358,6 +360,16 @@ bool MsckfVio::resetCallback(
   res.success = true;
   ROS_WARN("Resetting msckf vio completed...");
   return true;
+}
+
+//yolo dets function
+void MsckfVio::detsCallback(
+const yolofast::DetsPersonPositonPtr& msg){
+det_rxL = msg->det_L;
+det_rxR = msg->det_R;
+det_rxT = msg->det_T;
+det_rxB = msg->det_B;
+ROS_INFO("recieve ok");
 }
 
 void MsckfVio::featureCallback(
@@ -1451,17 +1463,22 @@ void MsckfVio::publish(const ros::Time& time) {
   feature_msg_ptr->header.frame_id = fixed_frame_id;
   feature_msg_ptr->height = 1;
 //yolo publish the person trajactory
-    nav_msgs::Path gui_path;
+
     //nav_msgs::Path path;
     gui_path.header.stamp=time;
     gui_path.header.frame_id="world";
-    geometry_msgs::PoseStamped this_pose_stamped;
-    this_pose_stamped.header.stamp=time;
-    this_pose_stamped.header.frame_id="world";
-        
+    gui_path.header.seq++;
 
+    this_pose_stamped.header.stamp=time;
+    this_pose_stamped.header.seq++;
+    this_pose_stamped.header.frame_id="world";
+     //yolo normalization    
+    int  feature_count=0;  
   for (const auto& item : map_server) {
     const auto& feature = item.second;
+feature_count++;    
+   // std::cout<<"feature_count"<<feature_count<<std::endl;
+
   //tarmy
    // for(auto iter = feature.observations.begin(); iter != feature.observations.end(); iter++)  
    // std::cout<<"state id is"<<iter->first<<"observations are"<<iter->second<<std::endl;
@@ -1472,22 +1489,45 @@ void MsckfVio::publish(const ros::Time& time) {
         IMUState::T_imu_body.linear() * feature.position;
   //yolo aquire the responding person persition 
     // std::cout<<"feature.person_position"<<state_server.imu_state.id<<std::endl;  
-    //  std::cout<<"feature.person_position"<<feature.person_position[person_id].<<",,,,,,,,,,,,,,,,,,,,"<<std::endl;
- auto z = feature.person_position.find(person_id)->second;
-std::cout<<"feature.person_position"<<z<<std::endl;
-      feature_msg_ptr->points.push_back(pcl::PointXYZ(
+ feature_msg_ptr->points.push_back(pcl::PointXYZ(
             feature_position(0), feature_position(1), feature_position(2)));
-        this_pose_stamped.pose.position.x =feature_position(0); 
-        this_pose_stamped.pose.position.y = feature_position(1);
-        this_pose_stamped.pose.position.z = feature_position(2);
-        gui_path.poses.push_back(this_pose_stamped);
-    }
-  }
-  feature_msg_ptr->width = feature_msg_ptr->points.size();
+ auto &person_pos = feature.person_position.find(person_id)->second;
+//yolo judge
+// only need the Corresponding feature of dected people
+if(person_pos(0)<det_rxL||person_pos(0)>det_rxR||person_pos(1)<det_rxL||person_pos(1)>det_rxR)continue;
 
+ //std::cout<<"feature.person_position"<<person_pos<<std::endl;
+
+     
+        //this_pose_stamped.pose.position.x +=feature_position(0);
+         
+        //this_pose_stamped.pose.position.y += feature_position(1);
+
+        //this_pose_stamped.pose.position.z += feature_position(2);
+
+       
+      this_pose_stamped.pose.position.x =feature_position(0);
+      this_pose_stamped.pose.position.y =feature_position(1); 
+      this_pose_stamped.pose.position.z =1.5;   
+  feature_msg_ptr->width = feature_msg_ptr->points.size();
+if (gui_path.poses.size()>50)gui_path.poses.erase(gui_path.poses.begin());
+  gui_path.poses.push_back(this_pose_stamped);
+   }
+  
+  }
+//if(feature_count!=0){
+//  this_pose_stamped.pose.position.x /=feature_count;
+
+//std::cout<<"this_pose_stamped.pose.position.x"<<this_pose_stamped.pose.position.x<<std::endl;
+  //this_pose_stamped.pose.position.y /=feature_count;
+//
+//std::cout<<"this_pose_stamped.pose.position.y"<<this_pose_stamped.pose.position.y<<std::endl;
+ // this_pose_stamped.pose.position.z =1.5;
+//}
+  
   feature_pub.publish(feature_msg_ptr);
   yolo_person_pub.publish(gui_path);
-    
+  //  std::cout<<"========我是分割线======"<<std::endl;
   return;
 }
 
