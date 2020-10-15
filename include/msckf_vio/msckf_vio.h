@@ -26,6 +26,12 @@
 #include <nav_msgs/Path.h>
 #include <yolofast/DetsPersonPositon.h>
 
+#include <opencv2/calib3d/calib3d.hpp>
+//mynt for ros
+#include <sensor_msgs/PointCloud2.h>
+#include <sensor_msgs/point_cloud2_iterator.h>
+
+
 #include "imu_state.h"
 #include "cam_state.h"
 #include "feature.hpp"
@@ -112,10 +118,14 @@ class MsckfVio {
      * @param msg Stereo feature measurements.
      */
   void detsCallback(const yolofast::DetsPersonPositonPtr& msg);
+ //mynt process
+    void depthCallback(const sensor_msgs::Image::ConstPtr& msg);
+  void publishPoints(cv::Vec3f &point , const sensor_msgs::Image::ConstPtr& msg);
     /*
      * @brief publish Publish the results of VIO.
      * @param time The time stamp of output msgs.
      */
+
     void publish(const ros::Time& time);
 
     /*
@@ -229,6 +239,9 @@ class MsckfVio {
     ros::Publisher yolo_person_pub;
     tf::TransformBroadcaster tf_pub;
     ros::ServiceServer reset_srv;
+    //process mynt
+    ros::Publisher points_publisher_;
+    ros::Subscriber mynt_depth;
     //my code
     ros::Publisher pub_T_J_W_transform;
     int msgSeq_;

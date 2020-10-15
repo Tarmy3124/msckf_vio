@@ -195,6 +195,12 @@ bool MsckfVio::createRosIO() {
   mocap_odom_sub = nh.subscribe("mocap_odom", 10,
       &MsckfVio::mocapOdomCallback, this);
   mocap_odom_pub = nh.advertise<nav_msgs::Odometry>("gt_odom", 1);
+//mynt process
+//points_publisher_ = nh.advertise<sensor_msgs::PointCloud2>("/md_centerPeople", 1);
+//mynt_depth = nh.subscribe("/mynteye/depth/image_raw", 1000,&MsckfVio::depthCallback, this);
+//leshi process
+points_publisher_ = nh.advertise<sensor_msgs::PointCloud2>("/md_centerPeople", 1);
+mynt_depth = nh.subscribe("/camera/depth/image_rect_raw", 1000,&MsckfVio::depthCallback, this);
  //my code
  pub_T_J_W_transform= nh.advertise<geometry_msgs::TransformStamped>("rovio/T_G_W", 1);
   return true;
@@ -229,6 +235,90 @@ bool MsckfVio::initialize() {
   ROS_INFO("Finish creating ROS IO...");
 
   return true;
+}
+//mynt receive point form detpth and transform it to pointcloud2
+void MsckfVio::publishPoints(cv::Vec3f &point , const sensor_msgs::Image::ConstPtr& msg)
+{
+    sensor_msgs::PointCloud2 points_msg;
+    points_msg.header.seq = msg->header.seq;
+    points_msg.header.stamp = msg->header.stamp;
+    points_msg.header.frame_id = msg->header.frame_id;
+    points_msg.width = 10;
+    points_msg.height = 10;
+    points_msg.is_dense = false;
+
+    sensor_msgs::PointCloud2Modifier modifier(points_msg);
+
+    modifier.setPointCloud2Fields(
+        4, "x", 1, sensor_msgs::PointField::FLOAT32, "y", 1,
+        sensor_msgs::PointField::FLOAT32, "z", 1,
+        sensor_msgs::PointField::FLOAT32, "rgb", 1,
+        sensor_msgs::PointField::FLOAT32);
+
+    modifier.setPointCloud2FieldsByString(2, "xyz", "rgb");
+    sensor_msgs::PointCloud2Iterator<float> iter_x(points_msg, "x");
+    sensor_msgs::PointCloud2Iterator<float> iter_y(points_msg, "y");
+    sensor_msgs::PointCloud2Iterator<float> iter_z(points_msg, "z");
+
+    sensor_msgs::PointCloud2Iterator<uint8_t> iter_r(points_msg, "r");
+    sensor_msgs::PointCloud2Iterator<uint8_t> iter_g(points_msg, "g");
+    sensor_msgs::PointCloud2Iterator<uint8_t> iter_b(points_msg, "b");
+    
+        *iter_x = point[2] * 0.001;
+        *iter_y = 0.f - point[0] * 0.001;
+        *iter_z = 0.f - point[1] * 0.001;
+//    cout<<"iternal"<<point<<endl;
+
+        *iter_r = static_cast<uint8_t>(255);
+        *iter_g = static_cast<uint8_t>(255);
+        *iter_b = static_cast<uint8_t>(255);
+ points_publisher_.publish(points_msg);
+}
+void MsckfVio::depthCallback(const sensor_msgs::Image::ConstPtr& msg)
+{
+    // Get a pointer to the depth values casting the data
+    // pointer to floating point
+    cv_bridge::CvImagePtr depth_ptr;
+     depth_ptr = cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::TYPE_32FC1); 
+   
+    //float* depths = (float*)(&msg->data[0]);
+
+ 
+    // Image coordinates of the center pixel
+   
+    int u = (det_rxL+det_rxR)  / 2;
+    int v = (det_rxT+det_rxB)/ 2;
+    int u1=(det_rxL+det_rxR+10)  / 2;
+    int v1=(det_rxT+det_rxB+10)/ 2;
+   // std::cout<<"u----"<<u<<"v----"<<v;
+   // std::cout<<"depth_ptr->imageat<uint16_t>(v, u);\n"<<depth_ptr->image.at<uint16_t>(u, v)<<std::endl;
+   // int centerIdx = u + msg->width * v;
+    float depth,depthL1,depthL2,center_x=387.029,center_y=241.294,constant_x=0.0027087,constant_y=0.00270966;
+
+
+    // Linear index of the center pixel
+
+    cv::Vec3f point;
+    depth=depth_ptr->image.at<uint16_t>(v, u);
+depthL1=depth_ptr->image.at<uint16_t>(v1, u1);
+   
+    
+
+ //   std::cout<<"depthL2"<<depthL2<<endl;
+//    std::cout<<"depthL1"<<depthL1<<endl;
+std::cout<<"depth==="<<depth<<endl;
+std::cout<<"depthL1==="<<depthL1<<endl;
+  //  if(depth=0)return;
+//   std::cout<<"depth"<<depth;
+    // Output the measure
+      point[0] = (u - center_x) * depth * constant_x ;
+      point[1] = (v - center_y) * depth * constant_y ;
+      point[2] = depth ;
+     //cout<<"external"<<point<<endl;
+     publishPoints(point, msg);
+    
+
+    //ROS_INFO("Center distance : %g m", depths[centerIdx]);
 }
 
 void MsckfVio::imuCallback(
@@ -369,7 +459,7 @@ det_rxL = msg->det_L;
 det_rxR = msg->det_R;
 det_rxT = msg->det_T;
 det_rxB = msg->det_B;
-ROS_INFO("recieve ok");
+//ROS_INFO("DetsPersonPositon recieve ok");
 }
 
 void MsckfVio::featureCallback(
