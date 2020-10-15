@@ -197,7 +197,7 @@ bool MsckfVio::createRosIO() {
   mocap_odom_pub = nh.advertise<nav_msgs::Odometry>("gt_odom", 1);
 //mynt process
 //points_publisher_ = nh.advertise<sensor_msgs::PointCloud2>("/md_centerPeople", 1);
-//mynt_depth = nh.subscribe("/mynteye/depth/image_raw", 1000,&MsckfVio::depthCallback, this);
+//mynt_depth = nh.subscribe("/camera/depth/image", 1000,&MsckfVio::depthCallback, this);
 //leshi process
 points_publisher_ = nh.advertise<sensor_msgs::PointCloud2>("/md_centerPeople", 1);
 mynt_depth = nh.subscribe("/camera/depth/image_rect_raw", 1000,&MsckfVio::depthCallback, this);
@@ -264,16 +264,17 @@ void MsckfVio::publishPoints(cv::Vec3f &point , const sensor_msgs::Image::ConstP
     sensor_msgs::PointCloud2Iterator<uint8_t> iter_g(points_msg, "g");
     sensor_msgs::PointCloud2Iterator<uint8_t> iter_b(points_msg, "b");
     
-        *iter_x = point[2] * 0.001;
-        *iter_y = 0.f - point[0] * 0.001;
-        *iter_z = 0.f - point[1] * 0.001;
-//    cout<<"iternal"<<point<<endl;
+        *iter_x = point[2] * 0.01;
+        *iter_y = 0.f - point[0] * 0.01;
+        *iter_z = 0.f - point[1] * 0.01;
+   cout<<"iternal"<<point<<endl;
 
         *iter_r = static_cast<uint8_t>(255);
         *iter_g = static_cast<uint8_t>(255);
         *iter_b = static_cast<uint8_t>(255);
  points_publisher_.publish(points_msg);
 }
+//https://blog.csdn.net/x_r_su/article/details/53088924
 void MsckfVio::depthCallback(const sensor_msgs::Image::ConstPtr& msg)
 {
     // Get a pointer to the depth values casting the data
@@ -293,13 +294,32 @@ void MsckfVio::depthCallback(const sensor_msgs::Image::ConstPtr& msg)
    // std::cout<<"u----"<<u<<"v----"<<v;
    // std::cout<<"depth_ptr->imageat<uint16_t>(v, u);\n"<<depth_ptr->image.at<uint16_t>(u, v)<<std::endl;
    // int centerIdx = u + msg->width * v;
-    float depth,depthL1,depthL2,center_x=387.029,center_y=241.294,constant_x=0.0027087,constant_y=0.00270966;
-
+ //   float depth,depthL1,depthL2,center_x=387.029,center_y=241.294,constant_x=0.0027087,constant_y=0.00270966;
+static float depth,depth_last,depthL1,depthL2,center_x=317.808,center_y=211.492,constant_x=0.0020104397,constant_y=0.00201100853;
 
     // Linear index of the center pixel
+    // Get a pointer to the depth values casting the data
+    // pointer to floating point
+    // depth from csdn
+    auto depths = (&msg->data[0]);
+    // Image coordinates of the center pixel
+    int ucs = (det_rxL+det_rxR)  / 2;
+    int vcs = (det_rxT+det_rxB)/ 2;
+    // Linear index of the center pixel
+    int centerIdx = ucs + msg->width * vcs;
+    // Output the measure
+    if(depths[centerIdx]<80)return;
+    ROS_INFO("Center distance : %d cm", depths[centerIdx]);
+    
 
     cv::Vec3f point;
     depth=depth_ptr->image.at<uint16_t>(v, u);
+   /* if(depth==0)return;
+    if(depth-depth_last>(float)10000)
+    {
+    depth_last=depth;
+    return;
+    }*/
 depthL1=depth_ptr->image.at<uint16_t>(v1, u1);
    
     
@@ -308,12 +328,13 @@ depthL1=depth_ptr->image.at<uint16_t>(v1, u1);
 //    std::cout<<"depthL1"<<depthL1<<endl;
 std::cout<<"depth==="<<depth<<endl;
 std::cout<<"depthL1==="<<depthL1<<endl;
+//if ()
   //  if(depth=0)return;
 //   std::cout<<"depth"<<depth;
     // Output the measure
-      point[0] = (u - center_x) * depth * constant_x ;
-      point[1] = (v - center_y) * depth * constant_y ;
-      point[2] = depth ;
+      point[0] = (u - center_x) * depths[centerIdx] * constant_x ;
+      point[1] = (v - center_y) * depths[centerIdx] * constant_y ;
+      point[2] = depths[centerIdx];
      //cout<<"external"<<point<<endl;
      publishPoints(point, msg);
     
