@@ -290,10 +290,10 @@ void MsckfVio::depthCallback(const sensor_msgs::Image::ConstPtr& msg)
    
     int u = (det_rxL+det_rxR)  / 2;
     int v = (det_rxT+det_rxB)/ 2;
-    int u1=(det_rxL+det_rxR+10)  / 2;
-    int v1=(det_rxT+det_rxB+10)/ 2;
+    //int u1=(det_rxL+det_rxR+10)  / 2;
+    //int v1=(det_rxT+det_rxB+10)/ 2;
    // std::cout<<"u----"<<u<<"v----"<<v;
-   // std::cout<<"depth_ptr->imageat<uint16_t>(v, u);\n"<<depth_ptr->image.at<uint16_t>(u, v)<<std::endl;
+    std::cout<<"depth_ptr->imageat<uint16_t>(v, u);\n"<<depth_ptr->image.at<float>(v, u)<<std::endl;
    // int centerIdx = u + msg->width * v;
  //   float depth,depthL1,depthL2,center_x=387.029,center_y=241.294,constant_x=0.0027087,constant_y=0.00270966;
 static float depth_last,depthL1,depthL2,center_x=317.808,center_y=211.492,constant_x=0.0020104397,constant_y=0.00201100853;
@@ -327,8 +327,8 @@ static float depth_last,depthL1,depthL2,center_x=317.808,center_y=211.492,consta
 
  //   std::cout<<"depthL2"<<depthL2<<endl;
 //    std::cout<<"depthL1"<<depthL1<<endl;
-std::cout<<"depth==="<<depth<<endl;
-std::cout<<"depthL1==="<<depthL1<<endl;
+//std::cout<<"depth==="<<depth<<endl;
+//std::cout<<"depthL1==="<<depthL1<<endl;
 //if ()
   //  if(depth=0)return;
 //   std::cout<<"depth"<<depth;
@@ -337,9 +337,25 @@ std::cout<<"depthL1==="<<depthL1<<endl;
       point[1] = (v - center_y) * depth * constant_y ;
       point[2] = depth;
      //cout<<"external"<<point<<endl;
-     publishPoints(point, msg);
-    
+     //yolo publish the person trajactory
 
+    //nav_msgs::Path path;
+    gui_path.header.stamp=msg->header.stamp;
+    gui_path.header.frame_id=msg->header.frame_id;
+    gui_path.header.seq++;
+
+    this_pose_stamped.header.stamp=msg->header.stamp;
+    this_pose_stamped.header.seq++;
+    this_pose_stamped.header.frame_id=msg->header.frame_id;
+    this_pose_stamped.pose.position.x =point[2]*0.001;
+      this_pose_stamped.pose.position.y =point[0]*0.001; 
+      this_pose_stamped.pose.position.z =point[1]*0.001;   
+    
+   if (gui_path.poses.size()>50)gui_path.poses.erase(gui_path.poses.begin());
+   gui_path.poses.push_back(this_pose_stamped);
+     
+  yolo_person_pub.publish(gui_path);
+   publishPoints(point, msg);
     //ROS_INFO("Center distance : %g m", depths[centerIdx]);
 }
 
@@ -1576,14 +1592,7 @@ void MsckfVio::publish(const ros::Time& time) {
   feature_msg_ptr->height = 1;
 //yolo publish the person trajactory
 
-    //nav_msgs::Path path;
-    gui_path.header.stamp=time;
-    gui_path.header.frame_id="world";
-    gui_path.header.seq++;
 
-    this_pose_stamped.header.stamp=time;
-    this_pose_stamped.header.seq++;
-    this_pose_stamped.header.frame_id="world";
      //yolo normalization    
     int  feature_count=0;  
   for (const auto& item : map_server) {
@@ -1617,13 +1626,8 @@ if(person_pos(0)<det_rxL||person_pos(0)>det_rxR||person_pos(1)<det_rxL||person_p
 
         //this_pose_stamped.pose.position.z += feature_position(2);
 
-       
-      this_pose_stamped.pose.position.x =feature_position(0);
-      this_pose_stamped.pose.position.y =feature_position(1); 
-      this_pose_stamped.pose.position.z =1.5;   
   feature_msg_ptr->width = feature_msg_ptr->points.size();
-if (gui_path.poses.size()>50)gui_path.poses.erase(gui_path.poses.begin());
-  gui_path.poses.push_back(this_pose_stamped);
+
    }
   
   }
@@ -1636,9 +1640,7 @@ if (gui_path.poses.size()>50)gui_path.poses.erase(gui_path.poses.begin());
 //std::cout<<"this_pose_stamped.pose.position.y"<<this_pose_stamped.pose.position.y<<std::endl;
  // this_pose_stamped.pose.position.z =1.5;
 //}
-  
   feature_pub.publish(feature_msg_ptr);
-  yolo_person_pub.publish(gui_path);
   //  std::cout<<"========我是分割线======"<<std::endl;
   return;
 }
