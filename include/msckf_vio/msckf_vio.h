@@ -31,6 +31,9 @@
 #include <sensor_msgs/PointCloud2.h>
 #include <sensor_msgs/point_cloud2_iterator.h>
 
+//for visualization
+#include <geometry_msgs/Point.h>
+#include <visualization_msgs/Marker.h>
 
 #include "imu_state.h"
 #include "cam_state.h"
@@ -189,6 +192,8 @@ class MsckfVio {
     StateServer state_server;
     // detected rectangle to judge features pixels location of people
     float det_rxL,det_rxR,det_rxT,det_rxB;
+    //设置一个bool标志，表示新消息未处理 
+    bool new_yolomsg =false;
     // Maximum number of camera states
     int max_cam_state_size;
 
@@ -231,6 +236,9 @@ class MsckfVio {
     // yolo define
     nav_msgs::Path gui_path;    
     geometry_msgs::PoseStamped this_pose_stamped;
+    //maker显示轨迹
+    visualization_msgs::Marker marker;
+    ros::Publisher vis_pub;
     ros::Subscriber dets_sub;
     ros::Publisher odom_pub;
     ros::Publisher feature_pub;

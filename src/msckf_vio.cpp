@@ -180,6 +180,7 @@ bool MsckfVio::createRosIO() {
   odom_pub = nh.advertise<nav_msgs::Odometry>("odom", 10);
   feature_pub = nh.advertise<sensor_msgs::PointCloud2>(
       "feature_point_cloud", 10);
+  vis_pub = nh.advertise<visualization_msgs::Marker>( "visualization_marker", 10);
  //yolo
   yolo_person_pub = nh.advertise<nav_msgs::Path>("personTrajectory",10, true);
   reset_srv = nh.advertiseService("reset",
@@ -287,7 +288,8 @@ void MsckfVio::depthCallback(const sensor_msgs::Image::ConstPtr& msg)
 
  
     // Image coordinates of the center pixel
-   
+   if(new_yolomsg ==true){
+
     int u = (det_rxL+det_rxR)  / 2;
     int v = (det_rxT+det_rxB)/ 2;
     //int u1=(det_rxL+det_rxR+10)  / 2;
@@ -310,7 +312,7 @@ static float depth_last,depthL1,depthL2,center_x=317.808,center_y=211.492,consta
     //int centerIdx = ucs + msg->width * vcs;
     // Output the measure
     //if(depths[centerIdx]<80)return;
-    ROS_INFO("Center distance : %f m", depth);
+    ROS_INFO("Center distance : %f mm", depth);
     
 
     cv::Vec3f point;
@@ -333,29 +335,60 @@ static float depth_last,depthL1,depthL2,center_x=317.808,center_y=211.492,consta
   //  if(depth=0)return;
 //   std::cout<<"depth"<<depth;
     // Output the measure
-      point[0] = (u - center_x) * depth * constant_x ;
-      point[1] = (v - center_y) * depth * constant_y ;
-      point[2] = depth;
+      point[0] = -(u - center_x) * depth * constant_x ;
+      point[1] = -(v - center_y) * depth * constant_y ;
+      point[2] = -depth;
      //cout<<"external"<<point<<endl;
      //yolo publish the person trajactory
 
+     //visualization with maker
+     //http://wiki.ros.org/rviz/DisplayTypes/Marker#Sphere_.28SPHERE.3D2.29
+     //1.1Example Usage
+	marker.header.frame_id = "camera_depth_optical_frame";
+	marker.header.stamp = msg->header.stamp;
+        gui_path.header.seq++;
+	marker.ns = "my_yolo_namespace";
+	marker.id = 0;
+	marker.type = visualization_msgs::Marker::SPHERE;
+	marker.action = visualization_msgs::Marker::ADD;
+	marker.pose.position.x = point[2]*0.001;
+	marker.pose.position.y = point[0]*0.001;
+	marker.pose.position.z = point[1]*0.001;
+	marker.pose.orientation.x = 0.0;
+	marker.pose.orientation.y = 0.0;
+	marker.pose.orientation.z = 0.0;
+	marker.pose.orientation.w = 1.0;
+	marker.scale.x = 0.4;
+	marker.scale.y = 0.4;
+	marker.scale.z = 0.4;
+	marker.color.a = 1.0; // Don't forget to set the alpha!
+	marker.color.r = 1.0;
+	marker.color.g = 1.0;
+	marker.color.b = 0.0;
+
+    //visualization with path
     //nav_msgs::Path path;
     gui_path.header.stamp=msg->header.stamp;
-    gui_path.header.frame_id=msg->header.frame_id;
+    gui_path.header.frame_id="camera_depth_optical_frame";
     gui_path.header.seq++;
 
     this_pose_stamped.header.stamp=msg->header.stamp;
     this_pose_stamped.header.seq++;
-    this_pose_stamped.header.frame_id=msg->header.frame_id;
+    this_pose_stamped.header.frame_id="camera_depth_optical_ frame";
+    //this_pose_stamped.header.frame_id=msg->header.frame_id;
     this_pose_stamped.pose.position.x =point[2]*0.001;
       this_pose_stamped.pose.position.y =point[0]*0.001; 
       this_pose_stamped.pose.position.z =point[1]*0.001;   
     
-   if (gui_path.poses.size()>50)gui_path.poses.erase(gui_path.poses.begin());
+   if (gui_path.poses.size()>5)gui_path.poses.erase(gui_path.poses.begin());
    gui_path.poses.push_back(this_pose_stamped);
      
   yolo_person_pub.publish(gui_path);
    publishPoints(point, msg);
+   vis_pub.publish(marker);
+   
+ }
+   new_yolomsg =false;//每次循环任务结尾消息标志清除
     //ROS_INFO("Center distance : %g m", depths[centerIdx]);
 }
 
@@ -498,6 +531,8 @@ det_rxR = msg->det_R;
 det_rxT = msg->det_T;
 det_rxB = msg->det_B;
 //ROS_INFO("DetsPersonPositon recieve ok");
+//设置一个bool标志，表示新消息未处理
+new_yolomsg =true;
 }
 
 void MsckfVio::featureCallback(
@@ -1608,7 +1643,7 @@ feature_count++;
     if (feature.is_initialized) {
       Vector3d feature_position =
         IMUState::T_imu_body.linear() * feature.position;
-  //yolo aquire the responding person persition 
+  //yolo aquire the responding person position 
     // std::cout<<"feature.person_position"<<state_server.imu_state.id<<std::endl;  
  feature_msg_ptr->points.push_back(pcl::PointXYZ(
             feature_position(0), feature_position(1), feature_position(2)));
