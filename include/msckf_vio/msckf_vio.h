@@ -218,6 +218,8 @@ class MsckfVio {
     // Frame id
     std::string fixed_frame_id;
     std::string child_frame_id;
+    //papera 
+    std::string camera_frame_id;
 
     // Whether to publish tf or not.
     bool publish_tf;

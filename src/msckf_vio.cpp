@@ -61,6 +61,7 @@ bool MsckfVio::loadParameters() {
   // Frame id
   nh.param<string>("fixed_frame_id", fixed_frame_id, "world");
   nh.param<string>("child_frame_id", child_frame_id, "robot");
+  nh.param<string>("camera_frame_id", camera_frame_id, "camera_yolo");
   nh.param<bool>("publish_tf", publish_tf, true);
   nh.param<double>("frame_rate", frame_rate, 40.0);
   nh.param<double>("position_std_threshold", position_std_threshold, 8.0);
@@ -1373,22 +1374,46 @@ void MsckfVio::publish(const ros::Time& time) {
   T_i_w.linear() = quaternionToRotation(
       imu_state.orientation).transpose();
   T_i_w.translation() = imu_state.position;
-
+  //yolo frame R & T
+  //extrinsics between yolo and odom(body) 
+   Eigen::Vector3d yolo_euler(1.57, 0, 0);  //0 1 2 对应 z y x
+   //euler to matrix3d
+    Matrix3d yolo_rotate;
+    Vector3d yolo_translation(0,1,0.08);
+    yolo_rotate = Eigen::AngleAxisd(yolo_euler[0], Eigen::Vector3d::UnitZ()) *
+                       Eigen::AngleAxisd(yolo_euler[1], Eigen::Vector3d::UnitY()) *
+                       Eigen::AngleAxisd(yolo_euler[2], Eigen::Vector3d::UnitX());
+   Eigen::Isometry3d T_i_yolo = Eigen::Isometry3d::Identity();
+   T_i_yolo.linear() = yolo_rotate*T_i_w.linear();
+   T_i_yolo.translation() = yolo_translation+T_i_w.translation();
+/*
+   T_i_yolo(0,0) = 1.0e+00,  T_i_yolo(0,1) =       0e+00,  T_i_yolo(0,2) =        0e+00,  T_i_yolo(0,3) =  0.6e+00;
+   T_i_yolo(1,0) = 0e+00,  T_i_yolo(1,1) =1.000000e+00,  T_i_yolo(1,2) =        0e+00,  T_i_yolo(1,3) =    0.8e+00;
+   T_i_yolo(2,0) = 0e+00,  T_i_yolo(2,1) =       0e+00,  T_i_yolo(2,2) =   1.0000e+00,  T_i_yolo(2,3) =    0e+00;
+   T_i_yolo(3,0) =     0,  T_i_yolo(3,1) =           0,  T_i_yolo(3,2) =            0,  T_i_yolo(3,3) =        1;
+*/
   Eigen::Isometry3d T_b_w = IMUState::T_imu_body * T_i_w *
     IMUState::T_imu_body.inverse();
   Eigen::Vector3d body_velocity =
     IMUState::T_imu_body.linear() * imu_state.velocity;
-
+  Eigen::Isometry3d T_yolo_b = T_i_yolo*IMUState::T_imu_body*T_i_yolo.inverse();
+  //Eigen::Isometry3d T_yolo_w = T_i_yolo.inverse()*T_i_w*T_i_yolo;
+  Eigen::Isometry3d T_yolo_w = IMUState::T_imu_body * T_i_yolo *
+    IMUState::T_imu_body.inverse();
 
   // Publish tf
   if (publish_tf) {
-    tf::Transform T_b_w_tf;
+    tf::Transform T_b_w_tf,T_yolo_w_tf;
 
     tf::transformEigenToTF(T_b_w, T_b_w_tf);
+    tf::transformEigenToTF(T_yolo_w, T_yolo_w_tf);
 	//geometry_msgs::TransformStamped T_b_w_tf_tarmy_geo; 
     
    tf_pub.sendTransform(tf::StampedTransform(
           T_b_w_tf, time, fixed_frame_id, child_frame_id));
+
+   tf_pub.sendTransform(tf::StampedTransform(
+          T_yolo_w_tf, time, fixed_frame_id, camera_frame_id));
 	//my code
 	//geometry_msgs::Transform T_b_w_tf_tarmy;
 	 geometry_msgs::TransformStamped T_b_w_tf_tarmy_geo;
